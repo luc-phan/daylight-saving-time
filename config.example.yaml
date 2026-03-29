@@ -1,0 +1,35 @@
+paths:
+  secret_key: ".secret_key"
+  secret_password: ".secret_password"
+  state_file: ".state.json"
+
+smtp:
+  server: "smtp.example.com"
+  port: 587
+  sender_email: "hello@example.com"
+
+receivers:
+  - "alert@example.com"
+
+language: french
+
+logging:
+  version: 1
+  disable_existing_loggers: false
+  formatters:
+    standard:
+      format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  handlers:
+    console:
+      class: logging.StreamHandler
+      formatter: standard
+      level: INFO
+    file:
+      class: logging.FileHandler
+      filename: "dst_notifier.log"
+      formatter: standard
+      level: INFO
+  loggers:
+    dst_notifier:
+      level: INFO
+      handlers: [console, file]

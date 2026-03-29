@@ -1,0 +1,14 @@
+{% block subject %}🕒 Dernier rappel : Changement d'heure AUJOURD'HUI !{% endblock %}
+
+{% block body %}
+Salut,
+
+Ne soyez pas surpris ! Le changement d'heure est AUJOURD'HUI !
+
+{% if label == "Summer Time (+1h, sleep less!)" %}  
+2h du mat -> 3h du mat
+{% endif %}
+{% if label == "Winter Time (-1h, sleep more!)" %}
+2h du mat -> 1h du mat
+{% endif %}
+{% endblock %}
