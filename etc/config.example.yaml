@@ -1,6 +1,6 @@
 paths:
-  secret_key: "var/secret_key"
-  secret_password: "var/secret_password"
+  secret_key: "var/.secret_key"
+  secret_password: "var/.secret_password"
   state_file: "var/state.json"
 
 smtp:
