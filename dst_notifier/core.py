@@ -8,6 +8,8 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
+from dst_notifier.config import AppConfig
+
 def load_state(state_file: Path) -> dict:
     if state_file.exists():
         try:
@@ -83,51 +85,110 @@ def check_and_alert():
         alert_7_key = f"{transition_date.isoformat()}_T7"
         
         if diff_days == 0:
-            if alert_0_key not in state:
-                logger.warning(f"ALERT: Time change ({label}) is TODAY!")
+            # if not state.get(alert_0_key):
+            #     logger.warning(f"ALERT: Time change ({label}) is TODAY!")
 
-                template = env.get_template(f'templates/{config.language}/alert_0_day.txt')
-                context = dict(label=label)
-                t_render = template.new_context(context)
-                subject = "".join(template.blocks['subject'](t_render))
-                body = "".join(template.blocks['body'](t_render))
+            #     template = env.get_template(f'templates/{config.language}/alert_0_day.txt')
+            #     context = dict(label=label)
+            #     t_render = template.new_context(context)
+            #     subject = "".join(template.blocks['subject'](t_render))
+            #     body = "".join(template.blocks['body'](t_render))
 
-                send_alert_emails(
-                    subject=subject,
-                    body=body,
-                    config=config
-                )
+            #     send_alert_emails(
+            #         subject=subject,
+            #         body=body,
+            #         config=config
+            #     )
+            #     state[alert_0_key] = True
+            #     alert_triggered = True
+
+            notified = notify(state, alert_0_key, env, config, label, diff_days, 'alert_0_day.txt')
+
+            if notified:
                 state[alert_0_key] = True
                 alert_triggered = True
-        elif 0 <= diff_days <= 1:
-            if alert_1_key not in state:
-                logger.warning(f"ALERT: Time change ({label}) is TOMORROW!")
-                send_alert_emails(
-                    subject=f"🕒 Final reminder: Time change TOMORROW ({label})",
-                    body=f"Don't get caught off guard! The time change ({label}) is tonight! It will be {transition_date.strftime('%d/%m/%Y')}.",
-                    config=config
-                )
+
+        elif diff_days == 1:
+            # if not state.get(alert_1_key):
+            #     logger.warning(f"ALERT: Time change ({label}) is TOMORROW!")
+
+            #     template = env.get_template(f'templates/{config.language}/alert_1_day.txt')
+            #     context = dict(label=label)
+            #     t_render = template.new_context(context)
+            #     subject = "".join(template.blocks['subject'](t_render))
+            #     body = "".join(template.blocks['body'](t_render))
+
+            #     send_alert_emails(
+            #         subject=subject,
+            #         body=body,
+            #         config=config
+            #     )
+            #     state[alert_1_key] = True
+            #     alert_triggered = True
+
+            notified = notify(state, alert_1_key, env, config, label, diff_days, 'alert_1_day.txt')
+
+            if notified:
                 state[alert_1_key] = True
                 alert_triggered = True
-                
-            if alert_7_key not in state:
-                state[alert_7_key] = True
-                
-        elif 1 < diff_days <= 7:
-            if alert_7_key not in state:
-                logger.warning(f"ALERT: Time change ({label}) in {diff_days} days.")
-                send_alert_emails(
-                    subject=f"🕒 Alert T-7: Time change ({label})",
-                    body=f"Get ready! The time change ({label}) will happen in {diff_days} days, on {transition_date.strftime('%d/%m/%Y')}.",
-                    config=config
-                )
+
+        elif 2 < diff_days <= 7:
+            # if not state.get(alert_7_key):
+            #     logger.warning(f"ALERT: Time change ({label}) in {diff_days} days.")
+
+            #     template = env.get_template(f'templates/{config.language}/alert_7_days.txt')
+            #     context = dict(label=label, diff_days=diff_days)
+            #     t_render = template.new_context(context)
+            #     subject = "".join(template.blocks['subject'](t_render))
+            #     body = "".join(template.blocks['body'](t_render))
+
+            #     send_alert_emails(
+            #         subject=subject,
+            #         body=body,
+            #         config=config
+            #     )
+            #     state[alert_7_key] = True
+            #     alert_triggered = True
+            
+            notified = notify(state, alert_7_key, env, config, label, diff_days, 'alert_7_days.txt')
+
+            if notified:
                 state[alert_7_key] = True
                 alert_triggered = True
-                
+
         elif diff_days > 7:
             logger.info(f"Time change ({label}) is in {diff_days} days (on {transition_date.strftime('%d/%m/%Y')}).")
-            
+
     save_state(state, config.paths.state_file)
-        
+
     if not alert_triggered:
         logger.info("No alert to send today.")
+
+def notify(
+    state: dict, 
+    key: str, 
+    env: Environment, 
+    config: AppConfig,
+    label: str, 
+    diff_days: int, 
+    template_name: str
+) -> None:
+    if not state.get(key):
+        logger.warning(f"ALERT: Time change ({label}) in {diff_days} days.")
+
+        template = env.get_template(f'templates/{config.language}/{template_name}')
+        context = dict(label=label, diff_days=diff_days)
+        t_render = template.new_context(context)
+        subject = "".join(template.blocks['subject'](t_render))
+        body = "".join(template.blocks['body'](t_render))
+
+        send_alert_emails(
+            subject=subject,
+            body=body,
+            config=config
+        )
+
+        # state[alert_7_key] = True
+        # alert_triggered = True
+        return True
+    return False

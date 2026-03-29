@@ -1,0 +1,10 @@
+{% block subject %}🕒 Rappel : Changement d'heure DEMAIN !{% endblock %}
+
+{% block body %}
+Salut,
+
+Ne soyez pas surpris ! Le changement d'heure est demain !
+
+{% if label == "Summer Time (+1h, sleep less!)" %}Demain 2h du mat -> 3h du mat{% endif -%}
+{% if label == "Winter Time (-1h, sleep more!)" %}Demain 2h du mat -> 1h du mat{% endif -%}
+{% endblock %}
