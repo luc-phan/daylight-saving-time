@@ -165,4 +165,3 @@ touch tests/__init__.py
 - ~~Add directories:~~
   - ~~etc/~~
   - ~~var/~~
-- ~~Finish the readme file~~
