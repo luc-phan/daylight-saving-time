@@ -32,3 +32,6 @@ touch tests/__init__.py
 ### TODO
 
 - Add typing
+- ~~Add directories:~~
+    ~~+ etc/~~
+    ~~+ var/~~

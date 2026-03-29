@@ -5,7 +5,8 @@ import sys
 from cryptography.fernet import Fernet
 from dataclasses import dataclass
 
-CONFIG_FILE = Path("config.yaml")
+ETC_DIR = Path("etc")
+CONFIG_FILE = ETC_DIR / "config.yaml"
 
 @dataclass
 class PathsConfig:
@@ -43,9 +44,9 @@ def load_config() -> AppConfig:
     
     return AppConfig(
         paths=PathsConfig(
-            secret_key=Path(paths_data.get("secret_key", ".secret_key")),
-            secret_password=Path(paths_data.get("secret_password", ".secret_password")),
-            state_file=Path(paths_data.get("state_file", ".state.json")),
+            secret_key=Path(paths_data.get("secret_key", "var/secret_key")),
+            secret_password=Path(paths_data.get("secret_password", "var/secret_password")),
+            state_file=Path(paths_data.get("state_file", "var/state.json")),
         ),
         smtp=SmtpConfig(
             server=smtp_data.get("server", "smtp.gmail.com"),

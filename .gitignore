@@ -9,10 +9,6 @@ wheels/
 # Virtual environments
 .venv
 
-.secret_key
-.secret_password
-
-config.yaml
-dst_notifier.log
-.state.json
-templates/
+/etc/config.yaml
+/templates
+/var

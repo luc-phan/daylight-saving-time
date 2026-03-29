@@ -1,7 +1,7 @@
 paths:
-  secret_key: ".secret_key"
-  secret_password: ".secret_password"
-  state_file: ".state.json"
+  secret_key: "var/secret_key"
+  secret_password: "var/secret_password"
+  state_file: "var/state.json"
 
 smtp:
   server: "smtp.example.com"
@@ -26,7 +26,7 @@ logging:
       level: INFO
     file:
       class: logging.FileHandler
-      filename: "dst_notifier.log"
+      filename: "var/dst_notifier.log"
       formatter: standard
       level: INFO
   loggers:
