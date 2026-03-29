@@ -12,6 +12,52 @@ from cryptography.fernet import Fernet
 ETC_DIR = Path("etc")
 CONFIG_FILE = ETC_DIR / "config.yaml"
 
+
+def _config_error(message: str) -> None:
+    print(f"Error: {message}")
+    sys.exit(1)
+
+
+def _require_mapping(data: dict[str, Any], key: str, where: str) -> dict[str, Any]:
+    raw = data.get(key)
+    if not isinstance(raw, dict):
+        _config_error(f"missing or invalid '{key}' in {where} (expected a mapping).")
+    return cast(dict[str, Any], raw)
+
+
+def _require_str(d: dict[str, Any], key: str, where: str) -> str:
+    v = d.get(key)
+    if v is None:
+        _config_error(f"missing '{key}' in {where}.")
+    s = str(v).strip()
+    if not s:
+        _config_error(f"empty '{key}' in {where}.")
+    return s
+
+
+def _require_int(d: dict[str, Any], key: str, where: str) -> int:
+    v = d.get(key)
+    if v is None:
+        _config_error(f"missing '{key}' in {where}.")
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        _config_error(f"invalid '{key}' in {where} (expected an integer).")
+
+
+def _require_receivers(data: dict[str, Any]) -> list[str]:
+    raw = data.get("receivers")
+    if not isinstance(raw, list) or not raw:
+        _config_error("missing or empty 'receivers' in config (expected a non-empty list).")
+    out: list[str] = []
+    for i, item in enumerate(raw):
+        s = str(item).strip() if item is not None else ""
+        if not s:
+            _config_error(f"empty entry in 'receivers' at index {i}.")
+        out.append(s)
+    return out
+
+
 @dataclass
 class PathsConfig:
     secret_key: Path
@@ -42,29 +88,22 @@ def load_config() -> AppConfig:
     if "logging" in data:
         logging.config.dictConfig(data["logging"])
 
-    paths_raw = data.get("paths", {})
-    smtp_raw = data.get("smtp", {})
-    paths_data: dict[str, Any] = cast(dict[str, Any], paths_raw) if isinstance(paths_raw, dict) else {}
-    smtp_data: dict[str, Any] = cast(dict[str, Any], smtp_raw) if isinstance(smtp_raw, dict) else {}
+    paths_data = _require_mapping(data, "paths", "config")
+    smtp_data = _require_mapping(data, "smtp", "config")
 
-    receivers_raw = data.get("receivers", [])
-    receivers: list[str] = (
-        [str(x) for x in receivers_raw]
-        if isinstance(receivers_raw, list)
-        else []
-    )
-    language = str(data.get("language") or "")
+    receivers = _require_receivers(data)
+    language = _require_str(data, "language", "config")
 
     return AppConfig(
         paths=PathsConfig(
-            secret_key=Path(str(paths_data.get("secret_key", "var/secret_key"))),
-            secret_password=Path(str(paths_data.get("secret_password", "var/secret_password"))),
-            state_file=Path(str(paths_data.get("state_file", "var/state.json"))),
+            secret_key=Path(_require_str(paths_data, "secret_key", "paths")),
+            secret_password=Path(_require_str(paths_data, "secret_password", "paths")),
+            state_file=Path(_require_str(paths_data, "state_file", "paths")),
         ),
         smtp=SmtpConfig(
-            server=str(smtp_data.get("server", "smtp.gmail.com")),
-            port=int(smtp_data.get("port") or 587),
-            sender_email=str(smtp_data.get("sender_email", "")),
+            server=_require_str(smtp_data, "server", "smtp"),
+            port=_require_int(smtp_data, "port", "smtp"),
+            sender_email=_require_str(smtp_data, "sender_email", "smtp"),
         ),
         receivers=receivers,
         language=language,
