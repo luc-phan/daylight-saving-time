@@ -1,16 +1,19 @@
+from __future__ import annotations
+
+import json
+import logging
 import smtplib
 from datetime import date, timedelta
 from email.message import EmailMessage
 from email.utils import formatdate
-import logging
-import json
 from pathlib import Path
+from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 
-from dst_notifier.config import AppConfig
+from dst_notifier.config import AppConfig, decrypt_password, load_config
 
-def load_state(state_file: Path) -> dict:
+def load_state(state_file: Path) -> dict[str, Any]:
     if state_file.exists():
         try:
             return json.loads(state_file.read_text(encoding="utf-8"))
@@ -18,12 +21,11 @@ def load_state(state_file: Path) -> dict:
             return {}
     return {}
 
-def save_state(state: dict, state_file: Path):
+def save_state(state: dict[str, Any], state_file: Path) -> None:
     state_file.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 logger = logging.getLogger(__name__)
 
-from dst_notifier.config import load_config, decrypt_password
 
 def get_last_sunday(year: int, month: int) -> date:
     """Calculates the last Sunday of a given month."""
@@ -41,7 +43,7 @@ def get_dst_transitions(year: int) -> list[tuple[date, str]]:
         (get_last_sunday(year, 10), "Winter Time (-1h, sleep more!)")
     ]
 
-def send_alert_emails(subject: str, body: str, config):
+def send_alert_emails(subject: str, body: str, config: AppConfig) -> None:
     """Sends the email to all receivers configured in config.yaml using smtplib."""
     password = decrypt_password(config)
     
@@ -63,7 +65,7 @@ def send_alert_emails(subject: str, body: str, config):
         server.send_message(msg)
         logger.info(f"Email successfully sent to {len(config.receivers)} recipients!")
 
-def check_and_alert():
+def check_and_alert() -> None:
     """Main check function. Separate from Invoke task so it can be tested theoretically."""
     config = load_config()
     today = date.today()
@@ -165,14 +167,14 @@ def check_and_alert():
         logger.info("No alert to send today.")
 
 def notify(
-    state: dict, 
-    key: str, 
-    env: Environment, 
+    state: dict[str, Any],
+    key: str,
+    env: Environment,
     config: AppConfig,
-    label: str, 
-    diff_days: int, 
-    template_name: str
-) -> None:
+    label: str,
+    diff_days: int,
+    template_name: str,
+) -> bool:
     if not state.get(key):
         logger.warning(f"ALERT: Time change ({label}) in {diff_days} days.")
 

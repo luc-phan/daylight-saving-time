@@ -1,13 +1,16 @@
-import sys
+from __future__ import annotations
+
 import getpass
-from invoke import task
+import sys
+
 from cryptography.fernet import Fernet
+from invoke import Context, task
 
 from dst_notifier.config import load_config
 from dst_notifier.core import check_and_alert
 
 @task
-def setup(c):
+def setup(c: Context) -> None:
     """
     Generates the encryption key, encrypts your SMTP password and saves it locally.
     """
@@ -40,7 +43,7 @@ def setup(c):
     print("You are all set! Now you can edit 'config.yaml' to add receivers and edit your email parameters.")
 
 @task
-def check(c):
+def check(c: Context) -> None:
     """
     Checks for upcoming DST transitions and alerts 1 week and 1 day before.
     """

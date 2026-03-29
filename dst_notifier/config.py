@@ -1,9 +1,13 @@
-import yaml
+from __future__ import annotations
+
 import logging.config
-from pathlib import Path
 import sys
-from cryptography.fernet import Fernet
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, cast
+
+import yaml
+from cryptography.fernet import Fernet
 
 ETC_DIR = Path("etc")
 CONFIG_FILE = ETC_DIR / "config.yaml"
@@ -31,30 +35,39 @@ def load_config() -> AppConfig:
     if not CONFIG_FILE.exists():
         print(f"Error: {CONFIG_FILE} is missing. Please create it from config.example.yaml.")
         sys.exit(1)
-    
-    data = yaml.safe_load(CONFIG_FILE.read_text(encoding="utf-8")) or {}
-    
+
+    raw = yaml.safe_load(CONFIG_FILE.read_text(encoding="utf-8"))
+    data: dict[str, Any] = cast(dict[str, Any], raw) if isinstance(raw, dict) else {}
+
     if "logging" in data:
         logging.config.dictConfig(data["logging"])
-        
-    paths_data = data.get("paths", {})
-    smtp_data = data.get("smtp", {})
-    receivers = data.get("receivers", [])
-    language = data.get("language")
-    
+
+    paths_raw = data.get("paths", {})
+    smtp_raw = data.get("smtp", {})
+    paths_data: dict[str, Any] = cast(dict[str, Any], paths_raw) if isinstance(paths_raw, dict) else {}
+    smtp_data: dict[str, Any] = cast(dict[str, Any], smtp_raw) if isinstance(smtp_raw, dict) else {}
+
+    receivers_raw = data.get("receivers", [])
+    receivers: list[str] = (
+        [str(x) for x in receivers_raw]
+        if isinstance(receivers_raw, list)
+        else []
+    )
+    language = str(data.get("language") or "")
+
     return AppConfig(
         paths=PathsConfig(
-            secret_key=Path(paths_data.get("secret_key", "var/secret_key")),
-            secret_password=Path(paths_data.get("secret_password", "var/secret_password")),
-            state_file=Path(paths_data.get("state_file", "var/state.json")),
+            secret_key=Path(str(paths_data.get("secret_key", "var/secret_key"))),
+            secret_password=Path(str(paths_data.get("secret_password", "var/secret_password"))),
+            state_file=Path(str(paths_data.get("state_file", "var/state.json"))),
         ),
         smtp=SmtpConfig(
-            server=smtp_data.get("server", "smtp.gmail.com"),
-            port=smtp_data.get("port", 587),
-            sender_email=smtp_data.get("sender_email", "")
+            server=str(smtp_data.get("server", "smtp.gmail.com")),
+            port=int(smtp_data.get("port") or 587),
+            sender_email=str(smtp_data.get("sender_email", "")),
         ),
         receivers=receivers,
-        language=language
+        language=language,
     )
 
 def decrypt_password(config: AppConfig) -> str:
@@ -69,6 +82,6 @@ def decrypt_password(config: AppConfig) -> str:
     fernet = Fernet(key)
     try:
         return fernet.decrypt(encrypted_password).decode("utf-8")
-    except Exception as e:
+    except Exception:
         print("❌ Decryption error: Invalid key or corrupted password file.")
         sys.exit(1)
