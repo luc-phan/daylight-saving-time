@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import getpass
 import json
 import logging
 import smtplib
@@ -9,9 +10,10 @@ from email.utils import formatdate
 from pathlib import Path
 from typing import Any
 
+from cryptography.fernet import Fernet
 from jinja2 import Environment, FileSystemLoader
 
-from dst_notifier.config import AppConfig, decrypt_password, load_config
+from dst_notifier.config import AppConfig, decrypt_password
 
 def load_state(state_file: Path) -> dict[str, Any]:
     if state_file.exists():
@@ -25,6 +27,41 @@ def save_state(state: dict[str, Any], state_file: Path) -> None:
     state_file.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 logger = logging.getLogger(__name__)
+
+
+def run_setup(config: AppConfig) -> None:
+    """Create encryption key and encrypted SMTP password (``load_config`` + ``init_logging`` in the entrypoint)."""
+    print("=== DST Notifier Configuration ===")
+
+    if not config.paths.secret_key.exists():
+        key = Fernet.generate_key()
+        config.paths.secret_key.write_bytes(key)
+        config.paths.secret_key.chmod(0o600)
+        print(f"✅ Encryption key generated and secured in '{config.paths.secret_key}'.")
+    else:
+        key = config.paths.secret_key.read_bytes()
+        print(f"ℹ️ Existing encryption key loaded from '{config.paths.secret_key}'.")
+
+    fernet = Fernet(key)
+
+    print("\nThis script will encrypt your password so it isn't stored in plain text.")
+    password = getpass.getpass("SMTP Password: ")
+
+    if not password:
+        raise ValueError("No password provided.")
+
+    encrypted = fernet.encrypt(password.encode("utf-8"))
+    config.paths.secret_password.write_bytes(encrypted)
+    config.paths.secret_password.chmod(0o600)
+
+    print(
+        f"\n✅ Your password has been encrypted and saved securely inside "
+        f"'{config.paths.secret_password}'."
+    )
+    print(
+        "You are all set! Now you can edit 'config.yaml' to add receivers and "
+        "edit your email parameters."
+    )
 
 
 def get_last_sunday(year: int, month: int) -> date:
@@ -65,17 +102,16 @@ def send_alert_emails(subject: str, body: str, config: AppConfig) -> None:
         server.send_message(msg)
         logger.info(f"Email successfully sent to {len(config.receivers)} recipients!")
 
-def check_and_alert() -> None:
-    """Main check function. Separate from Invoke task so it can be tested theoretically."""
-    config = load_config()
+def check_and_alert(config: AppConfig) -> None:
+    """DST transition check and alerts (call ``load_config()`` first)."""
     today = date.today()
     transitions = get_dst_transitions(today.year)
-    
+
     logger.info(f"Today's date: {today.strftime('%d/%m/%Y')}")
     alert_triggered = False
     state = load_state(config.paths.state_file)
-    env = Environment(loader=FileSystemLoader('.'))
-    
+    env = Environment(loader=FileSystemLoader("."))
+
     for transition_date, label in transitions:
         diff_days = (transition_date - today).days
         

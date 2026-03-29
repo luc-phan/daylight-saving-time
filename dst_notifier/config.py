@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging.config
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -76,6 +75,8 @@ class AppConfig:
     smtp: SmtpConfig
     receivers: list[str]
     language: str
+    logging: dict[str, Any] | None
+
 
 def load_config() -> AppConfig:
     if not CONFIG_FILE.exists():
@@ -85,8 +86,14 @@ def load_config() -> AppConfig:
     raw = yaml.safe_load(CONFIG_FILE.read_text(encoding="utf-8"))
     data: dict[str, Any] = cast(dict[str, Any], raw) if isinstance(raw, dict) else {}
 
-    if "logging" in data:
-        logging.config.dictConfig(data["logging"])
+    logging_raw = data.get("logging")
+    log_cfg: dict[str, Any] | None
+    if logging_raw is None:
+        log_cfg = None
+    elif isinstance(logging_raw, dict):
+        log_cfg = cast(dict[str, Any], logging_raw)
+    else:
+        _config_error("invalid 'logging' in config (expected a mapping).")
 
     paths_data = _require_mapping(data, "paths", "config")
     smtp_data = _require_mapping(data, "smtp", "config")
@@ -107,6 +114,7 @@ def load_config() -> AppConfig:
         ),
         receivers=receivers,
         language=language,
+        logging=log_cfg,
     )
 
 def decrypt_password(config: AppConfig) -> str:
