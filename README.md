@@ -6,11 +6,9 @@ changes using European rules:
 - Last Sunday of March: summer time starts.
 - Last Sunday of October: winter time starts.
 
-The app can send alerts:
+The app can send reminders:
 
-- 7 days before
-- 1 day before
-- the day of the transition
+- on configurable days before the transition
 
 It uses:
 
@@ -58,6 +56,38 @@ Edit `etc/config.yaml`:
 - `smtp.server`, `smtp.port`, `smtp.sender_email`
 - `receivers`: list of destination emails
 - `language`: template language folder name (currently `french`)
+- `notifications`: list of reminders, each with `days_before` and `template`.
+  For example:
+
+  ```yaml
+  notifications:
+    - days_before: 14
+      template: alert_days_before.txt
+    - days_before: 7
+      template: alert_days_before.txt
+    - days_before: 1
+      template: alert_1_day.txt
+    - days_before: 0
+      template: alert_0_day.txt
+  ```
+
+  A reminder is sent once its configured day is reached. If checks were missed,
+  only the most recent overdue reminder is sent; earlier missed reminders are
+  skipped. The state file records the last notification date per transition,
+  independently of the configured reminder days. If omitted, notifications
+  default to the legacy 7-day, 1-day, and transition-day reminders.
+
+  For example, after a notification for the October 25 transition on October
+  23, the state contains:
+
+  ```json
+  {
+    "2026-10-25": {
+      "last_notification": "2026-10-23"
+    }
+  }
+  ```
+
 - `logging`: optional Python logging config
 
 ## First-time setup
@@ -98,9 +128,16 @@ Templates live in `templates/<language>/` and define two Jinja blocks:
 
 Current files:
 
-- `alert_7_days.txt`
+- `alert_days_before.txt`
 - `alert_1_day.txt`
 - `alert_0_day.txt`
+
+`alert_days_before.txt` is suitable for any multi-day reminder because its
+content uses the `diff_days` template variable. Older configurations that omit
+`notifications` continue to use `alert_7_days.txt` for the 7-day reminder.
+For an existing installation using the new configurable example, copy
+`templates.example/french/alert_days_before.txt` into
+`templates/french/alert_days_before.txt`.
 
 ## Scheduling (recommended)
 
