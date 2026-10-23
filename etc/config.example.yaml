@@ -29,7 +29,7 @@ logging:
       filename: "var/dst_notifier.log"
       formatter: standard
       level: INFO
-  loggers:
-    dst_notifier:
-      level: INFO
-      handlers: [console, file]
+  loggers: []
+  root:
+    level: INFO
+    handlers: [console, file]
