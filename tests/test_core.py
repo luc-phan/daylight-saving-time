@@ -27,11 +27,17 @@ def test_get_dst_transitions():
     assert "Winter Time" in transitions[1][1]
 
 
-def test_check_and_alert_uses_seven_day_template(tmp_path: Path, monkeypatch) -> None:
+def test_check_and_alert_logs_countdown_on_every_check(
+    tmp_path: Path, monkeypatch, caplog
+) -> None:
+    import logging
+
+    current_day = [date(2026, 3, 22)]
+
     class FixedDate(date):
         @classmethod
         def today(cls) -> date:
-            return cls(2026, 3, 22)
+            return current_day[0]
 
     template_dir = tmp_path / "templates" / "french"
     template_dir.mkdir(parents=True)
@@ -71,3 +77,12 @@ def test_check_and_alert_uses_seven_day_template(tmp_path: Path, monkeypatch) ->
     assert sent == [
         ("Reminder in 7 days", "Summer Time (+1h, sleep less!)")
     ]
+
+    current_day[0] = date(2026, 3, 27)
+    caplog.set_level(logging.INFO, logger="dst_notifier.core")
+    caplog.clear()
+
+    core.check_and_alert(config)
+
+    assert "Time change (Summer Time (+1h, sleep less!)) is in 2 days" in caplog.text
+    assert len(sent) == 1

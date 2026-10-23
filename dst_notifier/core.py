@@ -117,6 +117,8 @@ def check_and_alert(config: AppConfig) -> None:
         
         if diff_days < 0:
             continue
+
+        logger.info(f"Time change ({label}) is in {diff_days} days (on {transition_date.strftime('%d/%m/%Y')}).")
             
         alert_0_key = f"{transition_date.isoformat()}_T0"
         alert_1_key = f"{transition_date.isoformat()}_T1"
@@ -193,9 +195,6 @@ def check_and_alert(config: AppConfig) -> None:
             if notified:
                 state[alert_7_key] = True
                 alert_triggered = True
-
-        elif diff_days > 7:
-            logger.info(f"Time change ({label}) is in {diff_days} days (on {transition_date.strftime('%d/%m/%Y')}).")
 
     save_state(state, config.paths.state_file)
 
