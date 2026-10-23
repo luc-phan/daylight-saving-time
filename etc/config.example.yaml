@@ -13,6 +13,16 @@ receivers:
 
 language: french
 
+notifications:
+  - days_before: 14
+    template: alert_days_before.txt
+  - days_before: 7
+    template: alert_days_before.txt
+  - days_before: 1
+    template: alert_1_day.txt
+  - days_before: 0
+    template: alert_0_day.txt
+
 logging:
   version: 1
   disable_existing_loggers: false

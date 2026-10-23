@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
 
@@ -68,7 +68,14 @@ class SmtpConfig:
     server: str
     port: int
     sender_email: str
-    
+
+
+@dataclass
+class NotificationConfig:
+    days_before: int
+    template: str
+
+
 @dataclass
 class AppConfig:
     paths: PathsConfig
@@ -76,6 +83,34 @@ class AppConfig:
     receivers: list[str]
     language: str
     logging: dict[str, Any] | None
+    notifications: list[NotificationConfig] = field(default_factory=list)
+
+
+def _require_notifications(data: dict[str, Any]) -> list[NotificationConfig]:
+    raw = data.get("notifications", [])
+    if not isinstance(raw, list):
+        _config_error("invalid 'notifications' in config (expected a list).")
+
+    notifications: list[NotificationConfig] = []
+    days_before_values: set[int] = set()
+    for i, item in enumerate(raw):
+        if not isinstance(item, dict):
+            _config_error(f"invalid notification at index {i} (expected a mapping).")
+
+        days_before = item.get("days_before")
+        if type(days_before) is not int or days_before < 0:
+            _config_error(
+                f"invalid 'days_before' in notification at index {i} "
+                "(expected a non-negative integer)."
+            )
+        if days_before in days_before_values:
+            _config_error(f"duplicate 'days_before' value {days_before} in notifications.")
+        days_before_values.add(days_before)
+
+        template = _require_str(item, "template", f"notification at index {i}")
+        notifications.append(NotificationConfig(days_before=days_before, template=template))
+
+    return notifications
 
 
 def load_config() -> AppConfig:
@@ -100,6 +135,7 @@ def load_config() -> AppConfig:
 
     receivers = _require_receivers(data)
     language = _require_str(data, "language", "config")
+    notifications = _require_notifications(data)
 
     return AppConfig(
         paths=PathsConfig(
@@ -115,6 +151,7 @@ def load_config() -> AppConfig:
         receivers=receivers,
         language=language,
         logging=log_cfg,
+        notifications=notifications,
     )
 
 def decrypt_password(config: AppConfig) -> str:
