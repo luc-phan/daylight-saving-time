@@ -98,7 +98,7 @@ Templates live in `templates/<language>/` and define two Jinja blocks:
 
 Current files:
 
-- `alert_7_day.txt`
+- `alert_7_days.txt`
 - `alert_1_day.txt`
 - `alert_0_day.txt`
 

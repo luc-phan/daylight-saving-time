@@ -1,4 +1,8 @@
 from datetime import date
+from pathlib import Path
+
+import dst_notifier.core as core
+from dst_notifier.config import AppConfig, PathsConfig, SmtpConfig
 from dst_notifier.core import get_last_sunday, get_dst_transitions
 
 def test_get_last_sunday():
@@ -21,3 +25,49 @@ def test_get_dst_transitions():
     # 2026: Oct 25 is Sunday
     assert transitions[1][0] == date(2026, 10, 25)
     assert "Winter Time" in transitions[1][1]
+
+
+def test_check_and_alert_uses_seven_day_template(tmp_path: Path, monkeypatch) -> None:
+    class FixedDate(date):
+        @classmethod
+        def today(cls) -> date:
+            return cls(2026, 3, 22)
+
+    template_dir = tmp_path / "templates" / "french"
+    template_dir.mkdir(parents=True)
+    (template_dir / "alert_7_days.txt").write_text(
+        "{% block subject %}Reminder in {{ diff_days }} days{% endblock %}"
+        "{% block body %}{{ label }}{% endblock %}",
+        encoding="utf-8",
+    )
+    config = AppConfig(
+        paths=PathsConfig(
+            secret_key=tmp_path / "key",
+            secret_password=tmp_path / "password",
+            state_file=tmp_path / "state.json",
+        ),
+        smtp=SmtpConfig(server="localhost", port=25, sender_email="sender@example.com"),
+        receivers=["recipient@example.com"],
+        language="french",
+        logging=None,
+    )
+    sent: list[tuple[str, str]] = []
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(core, "date", FixedDate)
+    monkeypatch.setattr(
+        core,
+        "get_dst_transitions",
+        lambda year: [(date(2026, 3, 29), "Summer Time (+1h, sleep less!)")],
+    )
+    monkeypatch.setattr(
+        core,
+        "send_alert_emails",
+        lambda subject, body, config: sent.append((subject, body)),
+    )
+
+    core.check_and_alert(config)
+
+    assert sent == [
+        ("Reminder in 7 days", "Summer Time (+1h, sleep less!)")
+    ]
